@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><title>Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css"><script src="api-config.js"></script><script src="gambar.js"></script></head><body>
+<main class="wrap">
+<section id="gate" class="narrow"><h1>Admin</h1><p class="sub">Halaman ini hanya untuk pengelola. Penulis masuk lewat halaman mereka sendiri.</p>
+<form id="gf"><label for="gp">Kata sandi admin</label><input id="gp" type="password" autocomplete="current-password" required><div class="row" style="margin-top:1em"><button class="pri">Masuk</button></div><p class="err" id="ge" role="alert"></p></form></section>
+<section id="app" class="hide">
+<div class="row sp"><h1>Penulis</h1><button id="out">Keluar</button></div>
+<p class="sub">Buat akun penulis. Setiap penulis mendapat sandi khusus yang hanya berlaku sekali untuk membuat sandi sendiri.</p>
+<form id="af" class="box"><label for="un" style="margin-top:0">Username baru</label><div class="row"><input id="un" style="flex:1;min-width:12rem" placeholder="huruf kecil, angka, _  (3-20)" maxlength="20" autocomplete="off" required><button class="pri">Buat akun</button></div><p class="err" id="ae" role="alert"></p>
+<div id="nc" class="hide"><p><b id="ncu"></b>: berikan sandi khusus ini ke penulis. <b>Hanya tampil sekali.</b></p><div class="code" id="ncc"></div><div class="row"><button type="button" id="cp">Salin</button></div></div></form>
+<div id="ul"></div>
+<div id="dt" class="hide"><h2 id="dth"></h2><div id="dl"></div><h2 id="dih"></h2><input id="fi" type="file" accept="image/*" class="hide"><div class="gl" id="di"></div></div>
+</section></main><div class="toast" id="t"></div>
+<script>
+const $=i=>document.getElementById(i),API=window.WRITING_API;let T="";try{T=sessionStorage.getItem("at")||""}catch(e){}
+const h=(t,p,...k)=>{const e=document.createElement(t);Object.assign(e,p||{});e.append(...k);return e};
+const fmt=x=>x?new Date(x).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"belum ada";
+function toast(m){const t=$("t");t.textContent=m;t.classList.add("show");clearTimeout(t._);t._=setTimeout(()=>t.classList.remove("show"),2400)}
+async function api(m,qs,b){const r=await fetch(API+(qs||""),{method:m,headers:{"content-type":"application/json",authorization:"Bearer "+T},body:b?JSON.stringify(b):undefined,cache:"no-store"});
+const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||r.status);e.status=r.status;throw e}return j}
+function show(on){$("gate").classList.toggle("hide",on);$("app").classList.toggle("hide",!on);if(on)users()}
+$("gf").onsubmit=async e=>{e.preventDefault();$("ge").textContent="";try{const r=await api("POST","?a=alogin",{password:$("gp").value});T=r.token;try{sessionStorage.setItem("at",T)}catch(_){}$("gp").value="";show(true)}catch(er){$("ge").textContent=er.message}};
+$("out").onclick=()=>{T="";try{sessionStorage.removeItem("at")}catch(e){}show(false)};
+function code(u,c){$("ncu").textContent=u;$("ncc").textContent=c;$("nc").classList.remove("hide");$("nc").scrollIntoView({behavior:"smooth",block:"center"})}
+$("cp").onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText($("ncc").textContent).then(()=>toast("Tersalin"))};
+$("af").onsubmit=async e=>{e.preventDefault();$("ae").textContent="";$("nc").classList.add("hide");
+try{const r=await api("POST","?a=adduser",{username:$("un").value});$("un").value="";code(r.username,r.code);users()}catch(er){$("ae").textContent=er.message}};
+async function users(){let l;try{l=await api("GET","?a=users")}catch(e){if(e.status===401)return show(false);return toast("Gagal: "+e.message)}
+const box=$("ul");box.replaceChildren(l.length?"":h("p",{className:"sub"},"Belum ada penulis."));
+l.forEach(u=>box.append(h("div",{className:"u"},
+h("div",{},h("b",{},u.username),h("span",{className:"bd"+(u.active?" on":"")},u.active?"Aktif":"Belum buat sandi")),
+h("p",{className:"meta"},"Akun dibuat "+fmt(u.created)+". Sandi dibuat penulis: "+fmt(u.pw_set)+". Login terakhir: "+fmt(u.last_login)+". Tulisan: "+u.n+"."),
+h("div",{className:"row"},h("button",{onclick:()=>view(u.username)},"Lihat tulisan"),
+h("button",{onclick:async()=>{if(!confirm("Reset sandi "+u.username+"? Sandi lamanya tidak berlaku dan dia harus membuat sandi baru."))return;try{const r=await api("POST","?a=reset",{username:u.username});code(r.username,r.code);users()}catch(e){toast(e.message)}}},"Reset sandi"),
+h("button",{className:"dg",onclick:async()=>{if(!confirm("Hapus "+u.username+" beserta SEMUA tulisannya?"))return;await api("DELETE","?a=user&u="+encodeURIComponent(u.username));$("dt").classList.add("hide");users()}},"Hapus")))))}
+async function view(u){const l=await api("GET","?a=uw&u="+encodeURIComponent(u));$("dt").classList.remove("hide");$("dth").textContent="Tulisan "+u;
+const d=$("dl");d.replaceChildren(l.length?"":h("p",{className:"sub"},"Belum ada tulisan."));
+l.forEach(w=>{const pre=h("pre",{className:"hide"},w.body||"(kosong)"),cm=h("div",{className:"hide"});
+d.append(h("div",{className:"w"},h("b",{},w.title||"Tanpa judul"),h("span",{className:"bd"+(w.published?" on":"")},w.published?"Terbit":"Draf"),
+h("p",{className:"meta"},[w.tag,w.date,"diubah "+fmt(w.updated)].filter(Boolean).join(", ")),pre,
+cm,h("div",{className:"row"},h("button",{onclick:()=>pre.classList.toggle("hide")},"Baca isi"),h("button",{onclick:()=>komen(w,cm)},"Komentar ("+(w.nc||0)+")"),
+w.published?h("button",{onclick:async()=>{await api("PUT","?a=unpub&id="+w.id);view(u)}},"Tarik dari publik"):"",
+h("button",{className:"dg",onclick:async()=>{if(!confirm("Hapus tulisan ini?"))return;await api("DELETE","?a=dw&id="+w.id);view(u);users()}},"Hapus"))))});
+await imgs(u);$("dt").scrollIntoView({behavior:"smooth"})}
+async function komen(w,box){box.classList.toggle("hide");if(!box.classList.contains("hide"))await muat(w,box)}
+async function muat(w,box){box.replaceChildren();let l=[];try{l=await api("GET","?a=acm&id="+w.id)}catch(e){return toast(e.message)}
+if(!l.length)return box.append(h("p",{className:"meta"},"Belum ada komentar."));
+l.forEach(c=>box.append(h("div",{className:"box"},h("b",{},c.name),h("span",{className:"meta"}," "+fmt(c.created)),h("p",{style:"white-space:pre-wrap;overflow-wrap:anywhere"},c.body),
+h("button",{className:"dg",onclick:async()=>{if(!confirm("Hapus komentar ini?"))return;try{await api("DELETE","?a=acm&id="+c.id);muat(w,box)}catch(e){toast(e.message)}}},"Hapus"))))}
+async function imgs(u){const l=await api("GET","?a=uimgs&u="+encodeURIComponent(u));$("dih").textContent="Gambar "+u;const g=$("di");g.replaceChildren(l.length?"":h("p",{className:"meta"},"Belum ada gambar."));
+l.forEach(i=>g.append(h("div",{className:"gi"},h("img",{src:imgUrl(i.id,i.updated),alt:i.name||"gambar",loading:"lazy"}),h("div",{className:"row"},
+h("button",{onclick:()=>{const f=$("fi");f.value="";f.onchange=async()=>{if(!f.files[0])return;try{await api("PUT","?a=aimg&id="+i.id,{data:await packImage(f.files[0])});imgs(u);toast("Gambar diganti")}catch(e){toast(e.message)}};f.click()}},"Ganti"),
+h("button",{className:"dg",onclick:async()=>{if(!confirm("Hapus gambar ini? Tulisan yang memakainya akan kehilangan gambarnya."))return;try{await api("DELETE","?a=aimg&id="+i.id);imgs(u);toast("Gambar dihapus")}catch(e){toast(e.message)}}},"Hapus")))))}
+
+if(T){api("GET","?a=check").then(()=>show(true)).catch(()=>show(false))}
+</script></body></html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Tulisan dan catatan Akbar Pratama."><meta name="theme-color" content="#f8f8f5"><title>Tulisan — Akbar Pratama</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23f8f8f5'/%3E%3Ctext x='24' y='38' font-size='32' text-anchor='middle' font-family='Arial' font-weight='900' fill='%23212b2e'%3EA%3C/text%3E%3C/svg%3E"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet"><link rel="stylesheet" href="tema.css"><script src="api-config.js"></script></head><body>
+<nav><a class="lg" href="index.html">Akbar Pratama</a><div class="nl"><a class="ln" href="index.html#karya">Karya</a><a class="ln" href="index.html#skill">Skill</a><a class="ln" href="index.html#tentang">Tentang</a><a class="ln on" href="writings.html">Tulisan</a></div></nav>
+<main class="wr"><p class="top">Catatan, ide, dan proses belajar</p><h1>Tulisan<span>.</span></h1>
+<p class="intro">Kumpulan tulisan yang saya bagikan secara publik. Pilih tulisan untuk membaca halaman lengkapnya.</p>
+<div class="headrow"><span>Semua tulisan</span><span class="count" id="count">memuat</span></div>
+<section class="feed" id="feed" aria-live="polite"><div class="empty">Memuat daftar tulisan…</div></section></main>
+<footer><span>© <span id="year"></span> Akbar Pratama</span><span>Dibuat sambil belajar.</span></footer>
+<script type="module">
+document.getElementById("year").textContent=new Date().getFullYear();
+const main=document.querySelector("main"),listHTML=main.innerHTML;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function bodyHtml(t){return String(t||"").split(/\n{2,}/).map(b=>{b=b.trim();if(!b)return"";
+ const im=b.match(/^!\[([^\]]*)\]\(img:([a-z0-9]+)\)$/);if(im)return'<figure><img src="'+esc(window.WRITING_API)+'?a=img&id='+im[2]+'" alt="'+esc(im[1])+'" loading="lazy" onerror="this.parentNode.remove()">'+(im[1]?'<figcaption>'+esc(im[1])+'</figcaption>':"")+'</figure>';
+ if(b.startsWith("### "))return"<h2>"+esc(b.slice(4))+"</h2>";
+ if(b.startsWith("> "))return"<blockquote>"+esc(b.slice(2)).replace(/\n/g,"<br>")+"</blockquote>";
+ return"<p>"+esc(b).replace(/\n/g,"<br>")+"</p>"}).join("")}
+function cmtInit(wid){const box=document.getElementById("cmt");if(!box)return;
+ box.innerHTML='<h2>Komentar</h2><div id="cl" aria-live="polite"></div><form id="cf" novalidate><label for="cn">Namamu</label><input id="cn" maxlength="40" autocomplete="nickname" placeholder="Boleh nama panggilan"><label for="cb">Komentar untuk penulis</label><textarea id="cb" rows="4" maxlength="1000" placeholder="Tulis komentarmu di sini"></textarea><input id="cw" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true"><div class="cr"><button class="bt" id="cs">Kirim komentar</button><span id="cc">0/1000</span></div><p id="ce" role="alert"></p></form>';
+ const $=i=>document.getElementById(i),API=window.WRITING_API;
+ const fmt=t=>new Date(t).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"});
+ const add=c=>{const d=document.createElement("div");d.className="ci";const b=document.createElement("b");b.textContent=c.name;const m=document.createElement("small");m.textContent=" "+fmt(c.created);const p=document.createElement("p");p.textContent=c.body;d.append(b,m,p);$("cl").append(d)};
+ fetch(API+"?a=cm&id="+encodeURIComponent(wid),{cache:"no-store"}).then(r=>r.json()).then(l=>{if(!Array.isArray(l)||!l.length){$("cl").innerHTML='<p class="note" id="c0">Belum ada komentar. Jadilah yang pertama.</p>';return}l.forEach(add)}).catch(()=>{$("cl").innerHTML='<p class="note">Komentar belum bisa dimuat.</p>'});
+ $("cb").addEventListener("input",()=>{$("cc").textContent=$("cb").value.length+"/1000"});
+ $("cf").addEventListener("submit",async e=>{e.preventDefault();const er=$("ce");er.textContent="";const btn=$("cs");btn.disabled=true;btn.textContent="Mengirim…";
+  try{const r=await fetch(API+"?a=cm&id="+encodeURIComponent(wid),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:$("cn").value,body:$("cb").value,hp:$("cw").value})});const j=await r.json().catch(()=>({}));
+   if(!r.ok)throw new Error(j.error||"Gagal mengirim, coba lagi.");
+   const z=$("c0");if(z)z.remove();if(j.c)add(j.c);$("cb").value="";$("cc").textContent="0/1000";er.className="ok";er.textContent="Terkirim. Terima kasih sudah berkomentar."}
+  catch(x){er.className="err";er.textContent=x.message}
+  btn.disabled=false;btn.textContent="Kirim komentar"})}
+let items=null,failed=false;
+function show(){
+ const id=decodeURIComponent(location.hash.slice(1));
+ if(id){const it=(items||[]).find(x=>x.id===id);
+  main.innerHTML='<a class="back" href="#">Semua tulisan</a>'+(it?
+   '<article class="full"><div class="meta">'+esc([it.tag,it.date,it.author&&"oleh "+it.author].filter(Boolean).join(", "))+'</div><h1>'+esc(it.title)+'</h1>'+(it.excerpt?'<p class="excerpt">'+esc(it.excerpt)+'</p>':'')+'<div class="content">'+bodyHtml(it.body)+'</div></article><section class="cmt" id="cmt"></section>'
+   :'<div class="empty">'+(items?"Tulisan tidak ditemukan.":"Memuat…")+'</div>');if(it)cmtInit(it.id);return}
+ main.innerHTML=listHTML;const feed=document.getElementById("feed"),count=document.getElementById("count");
+ if(failed){count.textContent="0 tulisan";feed.innerHTML='<div class="empty">Daftar tulisan belum bisa dimuat. Periksa koneksi database Cloudflare (D1).</div>';return}
+ if(!items)return;
+ count.textContent=String(items.length).padStart(2,"0")+" tulisan";
+ if(!items.length){feed.innerHTML='<div class="empty">Belum ada tulisan yang diterbitkan.</div>';return}
+ feed.replaceChildren(...items.map(item=>{
+  const a=document.createElement("a");a.className="card";a.href="#"+item.id;
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=[item.tag,item.date,item.author&&"oleh "+item.author].filter(Boolean).join(", ")||"Catatan";
+  const h=document.createElement("h3");h.textContent=item.title||"Tanpa judul";
+  const p=document.createElement("p");p.className="excerpt";p.textContent=item.excerpt||"Baca tulisan selengkapnya.";
+  const read=document.createElement("span");read.className="read";read.textContent="Baca tulisan";
+  a.append(meta,h,p,read);return a}))}
+window.addEventListener("hashchange",()=>{show();scrollTo(0,0)});
+let last="";
+async function load(){
+ try{const r=await fetch(window.WRITING_API,{cache:"no-store"});if(!r.ok)throw 0;const t=await r.text();
+  if(t!==last){last=t;items=JSON.parse(t);failed=false;show()}}
+ catch(e){if(!items){failed=true;show()}}}
+load();setInterval(()=>{if(!document.hidden)load()},60000);
+</script></body></html>
