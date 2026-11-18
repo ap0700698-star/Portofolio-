@@ -28,14 +28,14 @@ const $=i=>document.getElementById(i),API=window.WRITING_API;let T="",W="",list=
 try{W=sessionStorage.getItem("wt")||""}catch(e){}
 const h=(t,p,...k)=>{const e=document.createElement(t);Object.assign(e,p||{});e.append(...k);return e};
 function toast(m){const t=$("t");t.textContent=m;t.classList.add("show");clearTimeout(t._);t._=setTimeout(()=>t.classList.remove("show"),2400)}
-async function api(m,qs,b,tok){const r=await fetch(API+(qs||""),{method:m,headers:{"content-type":"application/json",authorization:"Bearer "+(tok||W)},body:b?JSON.stringify(b):undefined,cache:"no-store"});
+async function api(m,qs,b,tok){let r;try{r=await fetch(API+(qs||""),{method:m,headers:{"content-type":"application/json",authorization:"Bearer "+(tok||W)},body:b?JSON.stringify(b):undefined,cache:"no-store"})}catch(x){const e=new Error("Tidak bisa terhubung ke server. Periksa api-config.js dan ALLOWED_ORIGIN.");e.status=0;throw e}
 const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||r.status);e.status=r.status;throw e}return j}
 function view(v){["lg","su","ed"].forEach(x=>$(x).classList.toggle("hide",x!==v))}
 $("lf").onsubmit=async e=>{e.preventDefault();$("le").className="err";$("le").textContent="";
-try{const r=await api("POST","?a=login",{username:$("lu").value,secret:$("ls").value},null,"x");$("ls").value="";
-if(r.state==="setup"){T=r.token;view("su");$("p1").focus()}else{W=r.token;try{sessionStorage.setItem("wt",W)}catch(_){}enter(r.username)}}catch(er){$("le").textContent=er.message}};
-$("sf").onsubmit=async e=>{e.preventDefault();$("se").textContent="";if($("p1").value!==$("p2").value){$("se").textContent="Kedua sandi tidak sama.";return}
-try{await api("POST","?a=setpw",{password:$("p1").value},null,T);T="";$("p1").value=$("p2").value="";view("lg");$("le").className="ok";$("le").textContent="Sandi tersimpan. Sekarang masuk dengan sandi barumu.";$("ls").focus()}catch(er){$("se").textContent=er.message}};
+try{const un=$("lu").value,sc=$("ls").value;const r=await api("POST","?a=login",{username:un,secret:sc},null,"x");$("ls").value="";
+if(r.state==="setup"){T={username:un,secret:sc};view("su");$("p1").focus()}else{W=r.token;try{sessionStorage.setItem("wt",W)}catch(_){}enter(r.username)}}catch(er){$("le").textContent=er.message+" [tahap: masuk, kode "+er.status+"]"}};
+$("sf").onsubmit=async e=>{e.preventDefault();$("se").textContent="";if(!T){view("lg");return}if($("p1").value!==$("p2").value){$("se").textContent="Kedua sandi tidak sama.";return}
+try{await api("POST","?a=setpw",{username:T.username,secret:T.secret,password:$("p1").value});T=null;$("p1").value=$("p2").value="";view("lg");$("le").className="ok";$("le").textContent="Sandi tersimpan. Sekarang masuk dengan sandi barumu.";$("ls").focus()}catch(er){$("se").textContent=er.message+" [tahap: simpan sandi, kode "+er.status+"]"}};
 $("out").onclick=async()=>{await flush();try{await api("POST","?a=logout")}catch(e){}W="";try{sessionStorage.removeItem("wt")}catch(e){}location.reload()};
 const F=["ftag","fdate","ftitle","fex","fbody"],cur=()=>list.find(x=>x.id===cid);
 const vals=()=>({tag:$("ftag").value.trim(),date:$("fdate").value.trim(),title:$("ftitle").value.trim(),excerpt:$("fex").value.trim(),body:$("fbody").value});
