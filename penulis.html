@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><title>Ruang Penulis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css"><script src="api-config.js"></script>
+<style>.ed{display:flex;gap:4vw;align-items:flex-start;flex-wrap:wrap}.lst{flex:0 1 15rem;min-width:12rem}.main{flex:1 1 24rem}
+.it{display:block;width:100%;text-align:left;border:0;border-top:2px solid var(--w);border-radius:0;padding:.7em 0;font-weight:600}.it.on{color:var(--li)}.it small{display:block;font-weight:400;opacity:.7}
+.tt{font:800 clamp(1.8rem,5vw,3rem)/1.05 var(--f);border:0;border-bottom:2px solid var(--w);border-radius:0;background:none;margin:.5em 0}.bi{min-height:50vh;margin-top:.6em;line-height:1.8}</style></head><body>
+<main class="wrap">
+<section id="lg" class="narrow"><h1>Ruang penulis</h1><p class="sub">Masuk dengan username dan sandimu. Pertama kali masuk, pakai sandi khusus dari admin.</p>
+<form id="lf"><label for="lu">Username</label><input id="lu" autocomplete="username" autocapitalize="none" required>
+<label for="ls">Sandi</label><input id="ls" type="password" autocomplete="current-password" required>
+<div class="row" style="margin-top:1em"><button class="pri">Masuk</button></div><p class="err" id="le" role="alert"></p></form></section>
+<section id="su" class="narrow hide"><h1>Buat sandimu</h1><p class="sub">Sandi dari admin sudah dipakai dan tidak berlaku lagi. Buat sandi yang hanya kamu yang tahu, minimal 8 karakter. Setelah itu kamu masuk lagi dengan sandi barumu.</p>
+<form id="sf"><label for="p1">Sandi baru</label><input id="p1" type="password" autocomplete="new-password" minlength="8" required>
+<label for="p2">Ulangi sandi</label><input id="p2" type="password" autocomplete="new-password" minlength="8" required>
+<div class="row" style="margin-top:1em"><button class="pri">Simpan sandi</button></div><p class="err" id="se" role="alert"></p></form></section>
+<section id="ed" class="hide"><div class="row sp"><h1 id="hi">Tulisanku</h1><button id="out">Keluar</button></div>
+<div class="ed"><div class="lst"><button class="pri" id="nw">Tulisan baru</button><div id="ls2" style="margin-top:1em"></div></div>
+<div class="main" id="mn"><p class="sub" id="em">Pilih tulisan atau buat yang baru.</p>
+<div id="fm" class="hide"><div class="row"><input id="ftag" placeholder="Tag, mis. Catatan" style="flex:1;min-width:8rem"><input id="fdate" placeholder="Tanggal, mis. November 2026" style="flex:1;min-width:8rem"></div>
+<textarea class="tt" id="ftitle" rows="2" placeholder="Judul"></textarea><textarea id="fex" rows="2" placeholder="Ringkasan singkat (boleh kosong)"></textarea>
+<textarea class="bi" id="fbody" placeholder="Mulai menulis. Baris kosong = paragraf baru. ### subjudul. > kutipan."></textarea>
+<div class="row" style="margin-top:1em"><button id="sv">Simpan draf</button><button class="pri" id="pb">Terbitkan</button><button id="up" class="hide">Tarik dari publik</button><button class="dg" id="dl">Hapus</button><span id="wc" class="meta"></span></div></div></div></div></section></main><div class="toast" id="t"></div>
+<script>
+const $=i=>document.getElementById(i),API=window.WRITING_API;let T="",W="",list=[],cid=null,dirty=false,tm;
+try{W=sessionStorage.getItem("wt")||""}catch(e){}
+const h=(t,p,...k)=>{const e=document.createElement(t);Object.assign(e,p||{});e.append(...k);return e};
+function toast(m){const t=$("t");t.textContent=m;t.classList.add("show");clearTimeout(t._);t._=setTimeout(()=>t.classList.remove("show"),2400)}
+async function api(m,qs,b,tok){const r=await fetch(API+(qs||""),{method:m,headers:{"content-type":"application/json",authorization:"Bearer "+(tok||W)},body:b?JSON.stringify(b):undefined,cache:"no-store"});
+const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||r.status);e.status=r.status;throw e}return j}
+function view(v){["lg","su","ed"].forEach(x=>$(x).classList.toggle("hide",x!==v))}
+$("lf").onsubmit=async e=>{e.preventDefault();$("le").className="err";$("le").textContent="";
+try{const r=await api("POST","?a=login",{username:$("lu").value,secret:$("ls").value},null,"x");$("ls").value="";
+if(r.state==="setup"){T=r.token;view("su");$("p1").focus()}else{W=r.token;try{sessionStorage.setItem("wt",W)}catch(_){}enter(r.username)}}catch(er){$("le").textContent=er.message}};
+$("sf").onsubmit=async e=>{e.preventDefault();$("se").textContent="";if($("p1").value!==$("p2").value){$("se").textContent="Kedua sandi tidak sama.";return}
+try{await api("POST","?a=setpw",{password:$("p1").value},null,T);T="";$("p1").value=$("p2").value="";view("lg");$("le").className="ok";$("le").textContent="Sandi tersimpan. Sekarang masuk dengan sandi barumu.";$("ls").focus()}catch(er){$("se").textContent=er.message}};
+$("out").onclick=async()=>{await flush();try{await api("POST","?a=logout")}catch(e){}W="";try{sessionStorage.removeItem("wt")}catch(e){}location.reload()};
+const F=["ftag","fdate","ftitle","fex","fbody"],cur=()=>list.find(x=>x.id===cid);
+const vals=()=>({tag:$("ftag").value.trim(),date:$("fdate").value.trim(),title:$("ftitle").value.trim(),excerpt:$("fex").value.trim(),body:$("fbody").value});
+async function enter(u){view("ed");$("hi").textContent="Tulisan "+u;try{list=await api("GET","?a=mine")}catch(e){if(e.status===401){W="";return view("lg")}return toast(e.message)}
+draw();list.length?pick(list[0].id):mk()}
+function draw(){const b=$("ls2");b.replaceChildren();list.forEach(d=>b.append(h("button",{className:"it"+(d.id===cid?" on":""),onclick:async()=>{await flush();pick(d.id)}},d.title||"Tanpa judul",h("small",{},d.published?"Terbit":"Draf"))))}
+function pick(id){cid=id;dirty=false;const d=cur();if(!d)return;$("em").classList.add("hide");$("fm").classList.remove("hide");
+$("ftag").value=d.tag||"";$("fdate").value=d.date||"";$("ftitle").value=d.title||"";$("fex").value=d.excerpt||"";$("fbody").value=d.body||"";$("up").classList.toggle("hide",!d.published);wc();draw()}
+async function flush(x){if(!cid||(!dirty&&!x))return;clearTimeout(tm);dirty=false;const d=cur(),f={...vals(),...(x||{})};Object.assign(d,f);try{await api("PUT","?a=w&id="+d.id,f)}catch(e){dirty=true;toast("Gagal menyimpan: "+e.message)}}
+async function mk(){await flush();const d={tag:"Catatan",date:new Date().toLocaleDateString("id-ID",{month:"long",year:"numeric"}),title:"",excerpt:"",body:"",published:false};
+try{const r=await api("POST","?a=w",d);d.id=r.id;list.unshift(d);pick(d.id);$("ftitle").focus()}catch(e){toast(e.message)}}
+function wc(){const s=($("fbody").value+" "+$("ftitle").value).trim();$("wc").textContent=(s?s.split(/\s+/).length:0)+" kata"}
+F.forEach(i=>$(i).addEventListener("input",()=>{wc();dirty=true;clearTimeout(tm);tm=setTimeout(()=>flush().then(draw),700);if(i==="ftitle"){cur().title=$("ftitle").value;draw()}}));
+$("nw").onclick=mk;$("sv").onclick=async()=>{dirty=true;await flush();draw();toast("Tersimpan")};
+$("pb").onclick=async()=>{const f=vals();if(!f.title||!f.body.trim())return toast("Isi judul dan isi tulisan dulu.");
+if(!f.excerpt){f.excerpt=f.body.replace(/\s+/g," ").slice(0,170)+(f.body.length>170?"…":"");$("fex").value=f.excerpt}
+await flush({excerpt:f.excerpt,published:true});$("up").classList.remove("hide");draw();toast("Terbit, sudah tampil di portofolio")};
+$("up").onclick=async()=>{await flush({published:false});$("up").classList.add("hide");draw();toast("Ditarik dari publik")};
+$("dl").onclick=async()=>{const d=cur();if(!d||!confirm("Hapus tulisan ini? Jika sudah terbit, hilang dari portofolio."))return;clearTimeout(tm);dirty=false;
+try{await api("DELETE","?a=w&id="+d.id)}catch(e){return toast(e.message)}list=list.filter(x=>x.id!==d.id);cid=null;list.length?pick(list[0].id):mk();draw()};
+addEventListener("beforeunload",()=>{if(dirty)flush()});
+if(W)api("GET","?a=me").then(r=>enter(r.username)).catch(()=>{W="";view("lg")});
+</script></body></html>
